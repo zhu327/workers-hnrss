@@ -1,0 +1,9 @@
+name = "hn"
+main = "src/worker.py"
+compatibility_flags = ["python_workers"]
+compatibility_date = "2023-12-18"
+
+[vars]
+TRANSLATE_API_KEY = "nJJg71clQnfPbFvamoY4SERM5NkzqW4X"
+TRANSLATE_API_REGION = "westus3"
+TRANSLATE_LANGUAGE = "zh-Hans"
