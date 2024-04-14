@@ -1,10 +1,9 @@
 import json
 import xml.etree.ElementTree as ET
 from typing import List
-from urllib.parse import urlparse, urljoin, urlencode
+from urllib.parse import urlencode, urljoin, urlparse
 
-from js import fetch, Headers, Response
-
+from js import Headers, Response, fetch
 
 BASE_RSS_URL = "https://hnrss.org"
 
@@ -15,11 +14,11 @@ async def on_fetch(request, env):
 
     url = BASE_RSS_URL + url_parts.path + "?" + url_parts.query
 
-    resp = await fetch(url, method="GET")
-    body = await resp.text()
-
+    resp = await fetch(url, method="GET", redirect="manual")
     if resp.status != 200 or "xml" not in resp.headers.get("content-type", ""):
-        return Response.new(body, status=resp.status, headers=resp.headers)
+        return resp
+
+    body = await resp.text()
 
     # 解析rss类容并翻译标题
     translator = RssTranslator(
