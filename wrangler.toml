@@ -1,7 +1,7 @@
 name = "hn"
 main = "src/worker.py"
 compatibility_flags = ["python_workers"]
-compatibility_date = "2023-12-18"
+compatibility_date = "2024-03-29"
 
 [vars]
 TRANSLATE_API_KEY = "nJJg71clQnfPbFvamoY4SERM5NkzqW4X"

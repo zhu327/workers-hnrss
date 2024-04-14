@@ -1,9 +1,9 @@
+import json
 import xml.etree.ElementTree as ET
 from typing import List
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin, urlencode
 
-import httpx
-from js import Headers, Response
+from js import fetch, Headers, Response
 
 
 BASE_RSS_URL = "https://hnrss.org"
@@ -13,24 +13,24 @@ async def on_fetch(request, env):
     # Parse the incoming request URL
     url_parts = urlparse(request.url)
 
-    async with httpx.AsyncClient() as client:
-        url = BASE_RSS_URL + url_parts.path + "?" + url_parts.query
+    url = BASE_RSS_URL + url_parts.path + "?" + url_parts.query
 
-        resp = await client.get(url)
-        if resp.status_code != 200 or "xml" not in resp.headers.get("content-type", ""):
-            headers = Headers.new(resp.headers.items())
-            return Response.new(resp.text, status=resp.status_code, headers=headers)
+    resp = await fetch(url, method="GET")
+    body = await resp.text()
 
-        # 解析rss类容并翻译标题
-        translator = RssTranslator(
-            env.TRANSLATE_API_KEY,
-            env.TRANSLATE_API_REGION,
-            env.TRANSLATE_LANGUAGE,
-        )
-        content = await translator.translate(resp.text)
+    if resp.status != 200 or "xml" not in resp.headers.get("content-type", ""):
+        return Response.new(body, status=resp.status, headers=resp.headers)
 
-        headers = Headers.new({"content-type": resp.headers["content-type"]}.items())
-        return Response.new(content, headers=headers)
+    # 解析rss类容并翻译标题
+    translator = RssTranslator(
+        env.TRANSLATE_API_KEY,
+        env.TRANSLATE_API_REGION,
+        env.TRANSLATE_LANGUAGE,
+    )
+    content = await translator.translate(body)
+
+    headers = Headers.new({"content-type": resp.headers["content-type"]}.items())
+    return Response.new(content, headers=headers)
 
 
 class RssTranslator:
@@ -71,12 +71,15 @@ class RssTranslator:
         params = {"api-version": "3.0", "from": "en", "to": self.to_language}
         body = [{"text": title} for title in titles]
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                self.endpoint, params=params, headers=headers, json=body
-            )
+        response = await fetch(
+            urljoin(self.endpoint, "?" + urlencode(params)),
+            method="POST",
+            body=json.dumps(body),
+            headers=Headers.new(headers.items()),
+        )
 
-        if response.status_code != 200:
+        if response.status != 200:
             return titles
 
-        return [item["translations"][0]["text"] for item in response.json()]
+        content = await response.text()
+        return [item["translations"][0]["text"] for item in json.loads(content)]
